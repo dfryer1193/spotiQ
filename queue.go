@@ -49,3 +49,11 @@ func (q *PlayQueue) Size() int {
 
 	return len(q.items)
 }
+
+// IsEmpty returns true when the queue is empty
+func (q *PlayQueue) IsEmpty() bool {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	return len(q.items) == 0
+}
