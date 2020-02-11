@@ -24,23 +24,32 @@ type authInfo struct {
 	clientSecret string `json:clientSecret`
 }
 
-/*
-func redirectHandler(w http.ResponseWriter, r *http.Request) {
-	token, err := auth.Token(state, r)
-	if err != nil {
-		http.Error(w, "Could not get token", http.StatusNotFound)
-		return
-	}
-
-	client = auth.NewClient(token)
-}
-*/
-
 func listenForAuth(state string) *spotify.Client {
-	http.HandleFunc("/auth-callback", completeAuth)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Got request for: ", r.URL.String())
-	})
+	http.HandleFunc(
+		"/auth-callback",
+		func(w http.ResponseWriter, r *http.Request) {
+			tok, err := auth.Token(state, r)
+			if err != nil {
+				http.Error(w, "Couldn't get token", http.StatusForbidden)
+				log.Fatal(err)
+			}
+			if st := r.FormValue("state"); st != state {
+				http.NotFound(w, r)
+				log.Fatalf("State mismatch: %s != %s\n", st, state)
+			}
+
+			client := auth.NewClient(tok)
+			fmt.Fprintf(w, "Login Completed!")
+			clientCh <- &client
+		})
+
+	http.HandleFunc(
+		"/",
+		func(w http.ResponseWriter, r *http.Request) {
+			log.Println("Got request for: ", r.URL.String())
+
+		})
+
 	go http.ListenAndServe(":8080", nil)
 
 	return <-clientCh
